@@ -2,57 +2,53 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyber Sentinel AR - Back Camera</title>
-    <!-- A-Frame 1.4.2 es la versión más estable para WebXR en móviles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cyber Sentinel AR - Fixed</title>
+    <!-- Solo una librería para evitar conflictos -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
         
-        /* Overlay de Instrucciones */
         #instructions {
-            position: fixed; top: env(safe-area-inset-top, 20px); left: 0; width: 100%; 
-            text-align: center; color: #00ffcc; z-index: 100; pointer-events: none;
-            font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
-            text-shadow: 0 0 8px #000; display: none;
+            position: fixed; top: 20px; left: 0; width: 100%; text-align: center;
+            color: #00ffcc; z-index: 100; pointer-events: none;
+            font-size: 14px; font-weight: bold; text-transform: uppercase;
+            text-shadow: 0 0 10px #000; display: none;
         }
 
-        /* Cargador Neón */
         .loader-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00ffcc; display: flex;
             flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
-        .loading-text { font-size: 14px; font-weight: bold; margin-bottom: 20px; letter-spacing: 4px; }
-        .progress-bar { width: 60%; height: 2px; background: #1a1a1a; border-radius: 2px; position: relative; }
-        #progress-fill { width: 0%; height: 100%; background: #00ffcc; box-shadow: 0 0 15px #00ffcc; transition: width 0.4s; }
+        
+        .progress-bar-bg { width: 70%; height: 6px; background: #1a1a1a; border-radius: 3px; margin-top: 20px; }
+        #progress-fill { width: 0%; height: 100%; background: #00ffcc; box-shadow: 0 0 10px #00ffcc; transition: width 0.3s; }
 
-        /* Botón de Inicio Estilo Mobile-App */
         #start-ar {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            padding: 18px 45px; background: #00ffcc; border: none; border-radius: 12px;
-            color: #000; font-weight: 800; font-size: 16px; text-transform: uppercase;
-            box-shadow: 0 10px 30px rgba(0,255,204,0.4); z-index: 1001;
-            display: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+            padding: 15px 40px; background: #00ffcc; border: none; border-radius: 50px;
+            color: #000; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 5px 20px rgba(0,255,204,0.5); z-index: 1001;
+            display: none; cursor: pointer;
         }
     </style>
 </head>
 
 <body>
     <div id="loader" class="loader-container">
-        <div class="loading-text">CYBER SENTINEL</div>
-        <div class="progress-bar"><div id="progress-fill"></div></div>
-        <div id="status" style="margin-top:15px; font-size: 10px; color: #666;">SINCRONIZANDO MODELOS...</div>
+        <div style="letter-spacing: 5px;">CARGANDO AR</div>
+        <div class="progress-bar-bg"><div id="progress-fill"></div></div>
+        <div id="status-text" style="margin-top:10px; font-size: 10px;">INICIALIZANDO...</div>
     </div>
 
-    <div id="instructions">Escanea una superficie plana para fijar</div>
-    <button id="start-ar">Activar Cámara Trasera</button>
+    <div id="instructions">Escanea el suelo y toca para fijar</div>
+    <button id="start-ar">INICIAR EXPERIENCIA</button>
 
-    <!-- Escena configurada para Cámara Trasera AR -->
     <a-scene 
         webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #instructions;" 
-        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; colorManagement: true;"
+        renderer="logarithmicDepthBuffer: true; antialias: true;"
         ar-hit-test="target: #reticle; type: footprint;"
         embedded>
         
@@ -60,91 +56,69 @@
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
-        <!-- Retícula de precisión neón -->
         <a-entity id="reticle" visible="false">
-            <a-ring color="#00ffcc" radius-inner="0.1" radius-outer="0.13" rotation="-90 0 0">
-                <a-circle color="#00ffcc" radius="0.02" opacity="0.8"></a-circle>
-            </a-ring>
+            <a-ring color="#00ffcc" radius-inner="0.1" radius-outer="0.15" rotation="-90 0 0"></a-ring>
         </a-entity>
 
-        <!-- El Cyber Sentinel (Escalado para que quepa bien en una mesa/suelo) -->
         <a-entity id="model-placed" visible="false">
             <a-entity 
                 gltf-model="#cyber-model" 
-                scale="0.5 0.5 0.5"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+                scale="0.6 0.6 0.6"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000">
             </a-entity>
-            <a-text 
-                value="UIDE SENTINEL" 
-                position="0 1.2 0" 
-                align="center" 
-                color="#00ffcc"
-                width="3"
-                font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
-            </a-text>
         </a-entity>
 
-        <!-- Luces para resaltar el material del modelo -->
         <a-light type="ambient" intensity="1.5"></a-light>
-        <a-light type="directional" position="2 4 2" intensity="1"></a-light>
-        
+        <a-light type="directional" position="1 2 1" intensity="1"></a-light>
         <a-camera position="0 1.6 0"></a-camera>
     </a-scene>
 
     <script>
         const scene = document.querySelector('a-scene');
-        const loader = document.getElementById('loader');
-        const startBtn = document.getElementById('start-ar');
         const progressFill = document.getElementById('progress-fill');
-        const statusText = document.getElementById('status');
-        const reticle = document.querySelector('#reticle');
-        const modelPlaced = document.querySelector('#model-placed');
+        const statusText = document.getElementById('status-text');
+        const startBtn = document.getElementById('start-ar');
+        const loader = document.getElementById('loader');
         const instructions = document.getElementById('instructions');
+        const modelPlaced = document.querySelector('#model-placed');
+        const reticle = document.querySelector('#reticle');
 
-        // Manejo de carga de archivos (18MB)
-        const manager = new THREE.LoadingManager();
-        manager.onProgress = (u, l, t) => {
-            const p = (l/t) * 100;
-            progressFill.style.width = p + '%';
-            statusText.innerText = `DESCARGANDO: ${Math.round(p)}%`;
-        };
-        manager.onLoad = () => {
-            statusText.innerText = "SISTEMA LISTO";
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                setTimeout(() => {
-                    loader.style.display = 'none';
-                    startBtn.style.display = 'block';
-                }, 500);
-            }, 500);
-        };
-
-        // Iniciar carga del modelo al cargar la escena
+        // Función para rastrear la carga usando la API de Three.js interna de A-Frame
         scene.addEventListener('loaded', () => {
-            new THREE.GLTFLoader(manager).load(document.getElementById('cyber-model').src, () => {});
+            const loadingManager = AFRAME.THREE.DefaultLoadingManager;
+            
+            loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+                const p = (itemsLoaded / itemsTotal) * 100;
+                progressFill.style.width = p + '%';
+                statusText.innerText = `DESCARGANDO COMPONENTES... ${Math.round(p)}%`;
+                
+                if (p >= 100) {
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                        startBtn.style.display = 'block';
+                    }, 500);
+                }
+            };
         });
 
-        // Al hacer clic, entrar en modo AR (esto activa la cámara trasera)
         startBtn.addEventListener('click', () => {
             scene.enterAR();
             startBtn.style.display = 'none';
             instructions.style.display = 'block';
         });
 
-        // Lógica de detección y fijación
         scene.addEventListener('ar-hit-test-select', (e) => {
             const pose = e.detail.pose;
             modelPlaced.setAttribute('position', pose.transform.position);
             modelPlaced.setAttribute('visible', 'true');
             reticle.setAttribute('visible', 'false');
-            instructions.innerText = "MODELO FIJADO EN EL MUNDO REAL";
-            setTimeout(() => { instructions.style.display = 'none'; }, 3000);
+            instructions.innerText = "¡SISTEMA FIJADO!";
+            setTimeout(() => { instructions.style.display = 'none'; }, 2000);
         });
 
         scene.addEventListener('enter-vr', () => {
             if (scene.is('ar-mode')) {
                 reticle.setAttribute('visible', 'true');
-                instructions.innerText = "MUEVE EL MÓVIL PARA ESCANEAR EL SUELO";
             }
         });
     </script>
