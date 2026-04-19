@@ -2,104 +2,143 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyber Sentinel - Comunidad WebAR</title>
-    
-    <!-- Librerías de la Comunidad: A-Frame + AR.js + Gesture Controls -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://raw.githack.com/fcor/aframe-gesture-detector/master/dist/gesture-detector.js"></script>
-    <script src="https://raw.githack.com/fcor/aframe-gesture-detector/master/dist/gesture-handler.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cyber Sentinel - Surface Tracking Pro</title>
+    <!-- A-Frame 1.4.2 con soporte nativo para WebXR Hit-Test -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
         
-        /* UI de la Casa Abierta */
         #ui-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 1000;
-            display: flex; flex-direction: column; justify-content: space-between;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
         }
-        .info-panel {
-            background: rgba(0, 255, 204, 0.1); border-bottom: 2px solid #00ffcc;
-            color: #00ffcc; padding: 15px; text-align: center; font-family: monospace;
-            backdrop-filter: blur(5px); pointer-events: auto;
+
+        .status-msg {
+            background: rgba(0,0,0,0.6); color: #00ffcc; padding: 15px 25px;
+            border-radius: 30px; margin-top: 30px; font-weight: bold;
+            font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+            border: 1px solid #00ffcc; backdrop-filter: blur(5px);
         }
-        .controls-hint {
-            color: white; text-align: center; padding: 20px; font-family: sans-serif;
-            font-size: 0.8rem; background: linear-gradient(transparent, rgba(0,0,0,0.8));
+
+        #btn-start {
+            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+            padding: 20px 50px; background: #00ffcc; color: #000; border: none;
+            border-radius: 15px; font-weight: 900; font-size: 1rem;
+            box-shadow: 0 10px 30px rgba(0,255,204,0.5); z-index: 2000;
+            cursor: pointer; pointer-events: auto; display: none;
         }
-        
-        /* Loader */
+
         #loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00ffcc; display: flex;
-            justify-content: center; align-items: center; z-index: 2000;
-            font-family: monospace; letter-spacing: 3px;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 3000;
         }
+        .progress-bar { width: 60%; height: 2px; background: #222; margin-top: 20px; border-radius: 10px; overflow: hidden; }
+        #progress-fill { width: 0%; height: 100%; background: #00ffcc; transition: width 0.3s; }
     </style>
 </head>
 
 <body>
-    <div id="loader">CARGANDO CYBER SENTINEL...</div>
-
-    <div id="ui-overlay">
-        <div class="info-panel">
-            <div style="font-weight: bold; font-size: 1.2rem;">UIDE AR PROJECT</div>
-            <div style="font-size: 0.7rem; opacity: 0.8;">CASA ABIERTA 2026</div>
-        </div>
-        <div class="controls-hint">
-            Usa un dedo para rotar • Dos dedos para escalar<br>
-            <span style="color: #00ffcc;">El robot está frente a ti</span>
-        </div>
+    <div id="loader">
+        <div style="font-weight: bold; letter-spacing: 3px;">UIDE AR SYSTEM</div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <div id="loader-text" style="margin-top:10px; font-size: 10px;">CARGANDO MODELO 3D...</div>
     </div>
 
-    <!-- Escena AR integrada en el navegador -->
-    <a-scene
-        embedded
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-        gesture-detector
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true;">
+    <div id="ui-overlay">
+        <div id="status" class="status-msg" style="display:none;">Mueve el móvil para detectar el suelo</div>
+    </div>
+
+    <button id="btn-start">🚀 INICIAR EXPERIENCIA</button>
+
+    <!-- Escena configurada para Hit-Test (Surface Tracking) -->
+    <a-scene 
+        webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #ui-overlay;"
+        renderer="antialias: true; colorManagement: true; logarithmicDepthBuffer: true;"
+        ar-hit-test="target: #reticle; type: footprint;"
+        embedded>
         
         <a-assets>
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
-        <!-- El modelo aparece frente a la cámara inicial (0 0 -5) -->
-        <!-- class="clickable" y gesture-handler permiten el control táctil -->
-        <a-entity
-            id="sentinel-entity"
-            gltf-model="#cyber-model"
-            position="0 0 -8"
-            scale="1 1 1"
-            class="clickable"
-            gesture-handler="minScale: 0.25; maxScale: 10"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+        <!-- RETÍCULA: El círculo guía que "camina" por el suelo -->
+        <a-entity id="reticle" visible="false">
+            <a-ring color="#00ffcc" radius-inner="0.12" radius-outer="0.15" rotation="-90 0 0">
+                <a-circle color="#00ffcc" radius="0.03" animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; loop: true; dur: 600"></a-circle>
+            </a-ring>
+        </a-entity>
+
+        <!-- MODELO: Estará oculto hasta que el usuario toque la retícula -->
+        <a-entity id="placed-model" visible="false">
+            <a-entity 
+                gltf-model="#cyber-model" 
+                scale="0.6 0.6 0.6"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+            </a-entity>
         </a-entity>
 
         <a-light type="ambient" intensity="1.5"></a-light>
-        <a-light type="directional" position="1 2 1" intensity="1"></a-light>
-
-        <!-- Cámara de AR.js -->
-        <a-entity camera></a-entity>
+        <a-light type="directional" position="2 4 2" intensity="1"></a-light>
+        <a-camera position="0 1.6 0"></a-camera>
     </a-scene>
 
     <script>
+        const scene = document.querySelector('a-scene');
+        const btn = document.getElementById('btn-start');
         const loader = document.getElementById('loader');
-        const sentinel = document.getElementById('sentinel-entity');
+        const progressFill = document.getElementById('progress-fill');
+        const status = document.getElementById('status');
+        const reticle = document.getElementById('reticle');
+        const model = document.getElementById('placed-model');
 
-        // Quitar loader cuando el modelo 3D esté listo
-        sentinel.addEventListener('model-loaded', () => {
-            setTimeout(() => {
-                loader.style.display = 'none';
-            }, 1000);
+        // Manejo de carga de archivos pesados
+        scene.addEventListener('loaded', () => {
+            const loadingManager = AFRAME.THREE.DefaultLoadingManager;
+            loadingManager.onProgress = (u, l, t) => {
+                const p = (l/t) * 100;
+                progressFill.style.width = p + '%';
+                if(p >= 100) {
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                        btn.style.display = 'block';
+                    }, 500);
+                }
+            };
         });
 
-        // Error handling
-        window.onerror = (m) => {
-            document.getElementById('loader').innerText = "ERROR: " + m;
-        };
+        btn.addEventListener('click', () => {
+            scene.enterAR();
+            btn.style.display = 'none';
+            status.style.display = 'block';
+        });
+
+        // Evento crítico: Cuando el sistema encuentra el suelo y el usuario TOCA
+        scene.addEventListener('ar-hit-test-select', (e) => {
+            const pose = e.detail.pose;
+            model.setAttribute('position', pose.transform.position);
+            model.setAttribute('visible', 'true');
+            status.innerText = "¡SISTEMA FIJADO!";
+            setTimeout(() => { status.style.opacity = '0'; }, 3000);
+        });
+
+        // Actualizar instrucciones dinámicamente
+        setInterval(() => {
+            if (scene.is('ar-mode')) {
+                if (reticle.getAttribute('visible')) {
+                    status.innerText = "¡Superficie Detectada! Toca para fijar";
+                    status.style.borderColor = "#00ffcc";
+                    status.style.color = "#00ffcc";
+                } else {
+                    status.innerText = "Mueve el móvil para escanear el suelo";
+                    status.style.borderColor = "white";
+                    status.style.color = "white";
+                }
+            }
+        }, 500);
     </script>
 </body>
 </html>
