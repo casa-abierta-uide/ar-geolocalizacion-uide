@@ -1,49 +1,109 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset='utf-8'>
-    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <title>AR.js Marker Based - Casa Abierta UIDE</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cyber Sentinel AR - Casa Abierta UIDE</title>
+    
+    <!-- Librerías de A-Frame y AR.js -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* UI de Instrucciones Móvil */
+        #mobile-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1000;
+            display: flex; flex-direction: column; justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.6) 100%);
+        }
+
+        .header { padding: 20px; text-align: center; color: #00ffcc; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .footer { padding: 30px; text-align: center; color: white; }
+        
+        .scan-box {
+            width: 250px; height: 250px; border: 2px solid #00ffcc;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border-radius: 20px; box-shadow: 0 0 20px rgba(0,255,204,0.3);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .scan-box::after {
+            content: ""; width: 80%; height: 2px; background: #00ffcc;
+            position: absolute; animation: scan 2s ease-in-out infinite;
+        }
+
+        @keyframes scan {
+            0%, 100% { top: 10%; }
+            50% { top: 90%; }
+        }
+
+        #arjs-loader {
+            position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; justify-content: center; align-items: center; color: #fff;
+        }
+    </style>
 </head>
 
-<body style='margin: 0; overflow: hidden;'>
-    <!-- Escena configurada para Marcadores -->
+<body>
+    <!-- Loader Inicial -->
+    <div id="arjs-loader">
+        <div>Cargando Experiencia AR...</div>
+    </div>
+
+    <!-- UI Overlay para Móvil -->
+    <div id="mobile-overlay">
+        <div class="header">
+            <h1 style="margin:0; font-size: 1.5rem;">CASA ABIERTA UIDE</h1>
+            <p style="margin:5px; font-size: 0.9rem;">Cyber Sentinel Project</p>
+        </div>
+        
+        <div class="scan-box"></div>
+
+        <div class="footer">
+            <p>Apunta al marcador <strong>HIRO</strong> para ver el modelo</p>
+        </div>
+    </div>
+
+    <!-- Escena AR optimizada para móviles -->
     <a-scene
         vr-mode-ui="enabled: false"
         embedded
-        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'>
+        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; canvasWidth: 480; canvasHeight: 640;'>
         
         <a-assets>
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
-        <!-- MARCADOR 'HIRO': El estándar de AR.js -->
-        <a-marker preset="hiro">
-            <!-- El modelo aparecerá sobre el marcador -->
+        <!-- Marcador HIRO -->
+        <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
             <a-entity 
                 gltf-model="#cyber-model"
-                scale="1 1 1"
-                position="0 0 0"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000">
+                scale="1.5 1.5 1.5"
+                position="0 0.5 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
             </a-entity>
             
             <a-text 
-                value="CYBER SENTINEL UIDE" 
-                position="0 1.5 0" 
+                value="SENTINEL" 
+                position="0 2.5 0" 
                 align="center" 
-                scale="1 1 1" 
-                rotation="-90 0 0"
-                color="#00ff00">
+                color="#00ffcc"
+                width="6">
             </a-text>
         </a-marker>
 
         <a-entity camera></a-entity>
     </a-scene>
 
-    <div style="position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; z-index: 1001;">
-        Apunta la cámara al marcador "Hiro"
-    </div>
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('arjs-loader').style.display = 'none';
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
