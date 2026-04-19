@@ -3,127 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyber Sentinel - Hand AR (Progress)</title>
+    <title>Cyber Sentinel - AR Debug</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; }
         #output_canvas { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; object-fit: cover; }
         #video_input { display: none; }
         
-        /* UI de Progreso */
         .loader-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00ffcc; display: flex;
             flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
-        .progress-bar-bg {
-            width: 70%; height: 10px; background: #1a1a1a;
-            border-radius: 5px; margin-top: 20px; overflow: hidden;
-            border: 1px solid #333;
+        .progress-bar-bg { width: 70%; height: 10px; background: #1a1a1a; border-radius: 5px; margin-top: 20px; overflow: hidden; }
+        #progress-fill { width: 0%; height: 100%; background: #00ffcc; transition: width 0.3s ease; }
+        
+        /* Cuadro de Errores */
+        #error-console {
+            position: fixed; bottom: 10px; left: 10px; right: 10px;
+            background: rgba(255, 0, 0, 0.2); border: 1px solid #ff4444;
+            color: #ff4444; padding: 10px; font-size: 11px; z-index: 2000;
+            display: none; max-height: 100px; overflow-y: auto;
         }
-        #progress-fill {
-            width: 0%; height: 100%; background: #00ffcc;
-            box-shadow: 0 0 15px #00ffcc; transition: width 0.3s ease;
-        }
-        #status-text { margin-top: 15px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 
 <body>
     <div id="loader" class="loader-container">
-        <h1 style="font-size: 1.2rem; margin: 0;">INICIALIZANDO CYBER SENTINEL</h1>
-        <div class="progress-bar-bg">
-            <div id="progress-fill"></div>
-        </div>
-        <div id="status-text">Cargando Componentes... 0%</div>
+        <h1 style="font-size: 1rem;">DIAGNÓSTICO CYBER SENTINEL</h1>
+        <div class="progress-bar-bg"><div id="progress-fill"></div></div>
+        <div id="status-text" style="margin-top:10px;">Iniciando...</div>
     </div>
+
+    <div id="error-console"></div>
 
     <video id="video_input" playsinline></video>
     <canvas id="output_canvas"></canvas>
 
     <script>
-        const progressFill = document.getElementById('progress-fill');
+        const errorConsole = document.getElementById('error-console');
         const statusText = document.getElementById('status-text');
-        const loader = document.getElementById('loader');
+        const progressFill = document.getElementById('progress-fill');
 
-        let modelLoaded = false;
-        let aiLoaded = false;
-
-        function updateProgress(percent, status) {
-            progressFill.style.width = percent + '%';
-            statusText.innerText = ${status}... %;
-            if (percent >= 100 && modelLoaded && aiLoaded) {
-                setTimeout(() => loader.style.display = 'none', 500);
-            }
+        function showError(msg) {
+            errorConsole.style.display = 'block';
+            errorConsole.innerHTML += > ERROR: <br>;
+            console.error(msg);
         }
 
-        // --- Configuración de Three.js con LoadingManager ---
+        function logStatus(msg, percent) {
+            statusText.innerText = msg + "...";
+            if(percent) progressFill.style.width = percent + '%';
+        }
+
+        // 1. Validar HTTPS (Obligatorio para Cámara)
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            showError("LA CÁMARA REQUIERE HTTPS. Usa GitHub Pages o localhost.");
+        }
+
+        // 2. Captura de Errores Globales
+        window.onerror = (msg, url, line) => showError(${msg} (Línea ));
+
+        // --- Configuración Three.js ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('output_canvas'), alpha: true, antialias: true });
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('output_canvas'), alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        scene.add(new THREE.AmbientLight(0xffffff, 2));
 
-        let model;
         const manager = new THREE.LoadingManager();
-        manager.onProgress = (url, itemsLoaded, itemsTotal) => {
-            const p = (itemsLoaded / itemsTotal) * 100;
-            updateProgress(p * 0.5, "Descargando Modelo 3D"); // Ocupa el primer 50%
-        };
-        manager.onLoad = () => { 
-            modelLoaded = true;
-            updateProgress(50, "IA de Visión Iniciando");
-        };
+        manager.onStart = () => logStatus("Descargando Modelo 3D (18MB)", 10);
+        manager.onProgress = (u, l, t) => logStatus(Cargando... %, (l/t*100));
+        manager.onError = (url) => showError(No se pudo cargar: );
 
         const loader3d = new THREE.GLTFLoader(manager);
-        loader3d.load('Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb', (gltf) => {
-            model = gltf.scene;
-            model.scale.set(0.6, 0.6, 0.6);
-            model.visible = false;
-            scene.add(model);
-        });
-
-        // --- Configuración de MediaPipe Hands ---
-        const hands = new Hands({
-            locateFile: (file) => https://cdn.jsdelivr.net/npm/@mediapipe/hands/
-        });
-
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7
-        });
-
-        hands.onResults((results) => {
-            if (!aiLoaded) {
-                aiLoaded = true;
-                updateProgress(100, "Sistema Listo");
-            }
-
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && model) {
-                const landmarks = results.multiHandLandmarks[0];
-                const palmCenter = landmarks[9];
+        loader3d.load('Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb', 
+            (gltf) => {
+                const model = gltf.scene;
+                model.scale.set(0.6, 0.6, 0.6);
+                scene.add(model);
+                logStatus("Modelo Listo. Iniciando IA de Visión", 100);
                 
-                model.position.set((palmCenter.x - 0.5) * 10, -(palmCenter.y - 0.5) * 10, -palmCenter.z * 10);
-                model.rotation.y += 0.05;
-                model.visible = true;
-            } else if (model) {
-                model.visible = false;
-            }
-            renderer.render(scene, camera);
-        });
+                // Iniciar Hands después del modelo
+                startAI(model);
+            },
+            undefined,
+            (err) => showError("Error cargando el archivo GLB: " + err.message)
+        );
 
-        const videoElement = document.getElementById('video_input');
-        const cameraUtils = new Camera(videoElement, {
-            onFrame: async () => { await hands.send({ image: videoElement }); },
-            width: 1280, height: 720
-        });
-        cameraUtils.start();
+        function startAI(model) {
+            try {
+                const hands = new Hands({ locateFile: (f) => https://cdn.jsdelivr.net/npm/@mediapipe/hands/ });
+                hands.setOptions({ maxNumHands: 1, modelComplexity: 1 });
+                
+                hands.onResults((results) => {
+                    document.getElementById('loader').style.display = 'none';
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                        const p = results.multiHandLandmarks[0][9];
+                        model.position.set((p.x-0.5)*10, -(p.y-0.5)*10, -p.z*10);
+                        model.rotation.y += 0.05;
+                        model.visible = true;
+                    } else { model.visible = false; }
+                    renderer.render(scene, camera);
+                });
+
+                const cam = new Camera(document.getElementById('video_input'), {
+                    onFrame: async () => { await hands.send({ image: document.getElementById('video_input') }); },
+                    width: 1280, height: 720
+                });
+                cam.start().catch(err => showError("Error de Cámara: " + err.message));
+            } catch(e) { showError("Error IA: " + e.message); }
+        }
     </script>
 </body>
 </html>
