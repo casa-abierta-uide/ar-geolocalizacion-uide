@@ -22,12 +22,11 @@
         .progress-bar-bg { width: 70%; height: 10px; background: #1a1a1a; border-radius: 5px; margin-top: 20px; overflow: hidden; }
         #progress-fill { width: 0%; height: 100%; background: #00ffcc; transition: width 0.3s ease; }
         
-        /* Cuadro de Errores */
         #error-console {
             position: fixed; bottom: 10px; left: 10px; right: 10px;
-            background: rgba(255, 0, 0, 0.2); border: 1px solid #ff4444;
-            color: #ff4444; padding: 10px; font-size: 11px; z-index: 2000;
-            display: none; max-height: 100px; overflow-y: auto;
+            background: rgba(255, 0, 0, 0.4); border: 1px solid #ff4444;
+            color: #ffffff; padding: 10px; font-size: 12px; z-index: 2000;
+            display: none; max-height: 150px; overflow-y: auto;
         }
     </style>
 </head>
@@ -51,52 +50,55 @@
 
         function showError(msg) {
             errorConsole.style.display = 'block';
-            errorConsole.innerHTML += > ERROR: <br>;
+            errorConsole.innerHTML += `> ERROR: ${msg}<br>`;
             console.error(msg);
         }
 
         function logStatus(msg, percent) {
             statusText.innerText = msg + "...";
-            if(percent) progressFill.style.width = percent + '%';
+            if(percent !== undefined) progressFill.style.width = percent + '%';
         }
 
-        // 1. Validar HTTPS (Obligatorio para Cámara)
+        // 1. Validar HTTPS
         if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            showError("LA CÁMARA REQUIERE HTTPS. Usa GitHub Pages o localhost.");
+            showError("LA CÁMARA REQUIERE HTTPS.");
         }
 
-        // 2. Captura de Errores Globales
-        window.onerror = (msg, url, line) => showError(${msg} (Línea ));
+        // 2. Captura de Errores
+        window.onerror = (msg, url, line) => showError(`${msg} (Línea ${line})`);
 
-        // --- Configuración Three.js ---
+        // --- Three.js ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('output_canvas'), alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        scene.add(new THREE.AmbientLight(0xffffff, 2));
 
         const manager = new THREE.LoadingManager();
-        manager.onStart = () => logStatus("Descargando Modelo 3D (18MB)", 10);
-        manager.onProgress = (u, l, t) => logStatus(Cargando... %, (l/t*100));
-        manager.onError = (url) => showError(No se pudo cargar: );
+        manager.onStart = () => logStatus("Descargando Modelo 3D (18MB)", 5);
+        manager.onProgress = (u, l, t) => {
+            const p = (l/t) * 90; // Ocupa hasta el 90%
+            logStatus(`Descargando... ${Math.round(p)}%`, p);
+        };
+        manager.onError = (url) => showError(`Error de carga: ${url}`);
 
         const loader3d = new THREE.GLTFLoader(manager);
         loader3d.load('Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb', 
             (gltf) => {
                 const model = gltf.scene;
                 model.scale.set(0.6, 0.6, 0.6);
+                model.visible = false;
                 scene.add(model);
-                logStatus("Modelo Listo. Iniciando IA de Visión", 100);
-                
-                // Iniciar Hands después del modelo
+                logStatus("Modelo Listo. Iniciando IA", 95);
                 startAI(model);
             },
             undefined,
-            (err) => showError("Error cargando el archivo GLB: " + err.message)
+            (err) => showError("Error GLB: " + err.message)
         );
 
         function startAI(model) {
             try {
-                const hands = new Hands({ locateFile: (f) => https://cdn.jsdelivr.net/npm/@mediapipe/hands/ });
+                const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
                 hands.setOptions({ maxNumHands: 1, modelComplexity: 1 });
                 
                 hands.onResults((results) => {
@@ -114,8 +116,8 @@
                     onFrame: async () => { await hands.send({ image: document.getElementById('video_input') }); },
                     width: 1280, height: 720
                 });
-                cam.start().catch(err => showError("Error de Cámara: " + err.message));
-            } catch(e) { showError("Error IA: " + e.message); }
+                cam.start().then(() => logStatus("Cámara OK", 100)).catch(err => showError("Cámara: " + err.message));
+            } catch(e) { showError("IA: " + e.message); }
         }
     </script>
 </body>
