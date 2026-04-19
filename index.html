@@ -2,117 +2,126 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyber Sentinel AR - Pro</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cyber Sentinel AR - Multi-Cam</title>
+    <!-- Cargamos A-Frame y AR.js -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        #overlay {
+        
+        #ui-overlay {
+            position: fixed; bottom: 30px; left: 0; width: 100%;
+            display: flex; flex-direction: column; align-items: center;
+            z-index: 1000; gap: 15px;
+        }
+
+        .btn {
+            padding: 15px 30px; border-radius: 50px; border: none;
+            font-weight: bold; font-size: 14px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-transform: uppercase;
+        }
+
+        #btn-switch { background: #00ffcc; color: #000; }
+        #btn-reset { background: rgba(255,255,255,0.2); color: #fff; border: 1px solid #fff; }
+
+        #loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 100;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 40px; color: #00ffcc; text-shadow: 0 0 10px #000;
+            background: #000; color: #00ffcc; display: flex;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 2000;
         }
-        #status { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        .btn-start {
-            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            padding: 20px 50px; background: #00ffcc; color: #000; border: none;
-            border-radius: 15px; font-weight: 900; font-size: 1.2rem;
-            box-shadow: 0 10px 30px rgba(0,255,204,0.5); z-index: 1000;
-            cursor: pointer; pointer-events: auto;
+
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #1a1a1a;
+            border-top: 4px solid #00ffcc; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 
 <body>
-    <div id="overlay">
-        <div id="status">Cargando Sistema...</div>
-        <div id="debug" style="font-size: 10px; margin-top: 10px; opacity: 0.7;"></div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <div id="status">INICIALIZANDO CYBER SENTINEL...</div>
     </div>
 
-    <button id="btn-ar" class="btn-start" style="display:none;">INICIAR CÁMARA</button>
+    <div id="ui-overlay">
+        <button id="btn-switch" class="btn">Cambiar Cámara 🔄</button>
+        <button id="btn-reset" class="btn">Reiniciar Modelo</button>
+    </div>
 
     <a-scene 
-        webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay;"
-        renderer="antialias: true; colorManagement: true; logarithmicDepthBuffer: true;"
-        ar-hit-test="target: #reticle; type: footprint;"
-        embedded>
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false; facingMode: environment;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; antialias: true;">
         
         <a-assets>
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
-        <!-- Retícula Neón (Círculo de escaneo) -->
-        <a-entity id="reticle" visible="false">
-            <a-ring color="#00ffcc" radius-inner="0.1" radius-outer="0.15" rotation="-90 0 0">
-                <a-circle color="#00ffcc" radius="0.02" animation="property: scale; to: 1.5 1.5 1.5; dir: alternate; loop: true; dur: 500"></a-circle>
-            </a-ring>
-        </a-entity>
-
-        <!-- El Modelo (Pequeño por defecto para evitar que tape la cámara) -->
-        <a-entity id="model-placed" visible="false">
+        <!-- El modelo se coloca en una posición fija frente a la cámara (Markerless) -->
+        <a-entity id="ar-container" position="0 0 -5">
             <a-entity 
+                id="sentinel"
                 gltf-model="#cyber-model" 
-                scale="0.2 0.2 0.2"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+                scale="1 1 1"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
             </a-entity>
+            <a-text 
+                value="CYBER SENTINEL" 
+                position="0 2.5 0" 
+                align="center" 
+                color="#00ffcc"
+                width="6">
+            </a-text>
         </a-entity>
 
-        <a-light type="ambient" intensity="1.5"></a-light>
-        <a-light type="directional" position="2 4 2" intensity="1"></a-light>
-        <a-camera position="0 1.6 0"></a-camera>
+        <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        const scene = document.querySelector('a-scene');
-        const btn = document.getElementById('btn-ar');
+        const btnSwitch = document.getElementById('btn-switch');
+        const btnReset = document.getElementById('btn-reset');
+        const loader = document.getElementById('loader');
         const status = document.getElementById('status');
-        const debug = document.getElementById('debug');
-        const reticle = document.getElementById('reticle');
-        const modelPlaced = document.getElementById('model-placed');
+        const sentinel = document.getElementById('sentinel');
+        const container = document.getElementById('ar-container');
 
-        // 1. Verificar soporte
-        if (!window.isSecureContext) {
-            status.innerText = "ERROR: REQUIERE HTTPS";
-            status.style.color = "red";
-        }
+        let currentFacingMode = 'environment';
 
-        // 2. Manejo de carga
-        scene.addEventListener('loaded', () => {
-            status.innerText = "SISTEMA LISTO";
-            btn.style.display = "block";
+        // Ocultar loader cuando el modelo esté listo
+        sentinel.addEventListener('model-loaded', () => {
+            loader.style.display = 'none';
         });
 
-        btn.addEventListener('click', () => {
-            scene.enterAR();
-            btn.style.display = "none";
-            status.innerText = "MUEVE EL MÓVIL HACIA EL SUELO";
+        // Alternar entre cámara delantera y trasera
+        btnSwitch.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            
+            // Recargar la página con el nuevo facingMode (AR.js requiere reinicio de stream)
+            const url = new URL(window.location.href);
+            url.searchParams.set('facingMode', currentFacingMode);
+            window.location.href = url.href;
         });
 
-        // 3. Lógica de AR
-        scene.addEventListener('enter-vr', () => {
-            if (scene.is('ar-mode')) {
-                debug.innerText = "Modo AR Activo. Buscando superficie...";
+        // Al cargar, leer el facingMode de la URL
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const mode = params.get('facingMode');
+            if (mode) {
+                currentFacingMode = mode;
+                document.querySelector('a-scene').setAttribute('arjs', `sourceType: webcam; debugUIEnabled: false; facingMode: ${mode};`);
             }
         });
 
-        // Cuando el hit-test encuentra algo
-        scene.addEventListener('ar-hit-test-select', (e) => {
-            const pose = e.detail.pose;
-            modelPlaced.setAttribute('position', pose.transform.position);
-            modelPlaced.setAttribute('visible', 'true');
-            status.innerText = "MODELO FIJADO";
-            debug.innerText = "Fijado en: " + JSON.stringify(pose.transform.position);
-            setTimeout(() => { status.style.opacity = '0'; }, 3000);
+        // Reiniciar posición del modelo
+        btnReset.addEventListener('click', () => {
+            container.setAttribute('position', '0 0 -5');
+            sentinel.setAttribute('rotation', '0 0 0');
         });
-
-        // Actualizar estado de la retícula
-        setInterval(() => {
-            if (reticle.getAttribute('visible')) {
-                status.innerText = "¡SUPERFICIE DETECTADA! TOCA LA PANTALLA";
-                status.style.color = "#00ffcc";
-            }
-        }, 500);
     </script>
 </body>
 </html>
