@@ -3,131 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyber Sentinel - AR Fix</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <title>Cyber Sentinel - Surface AR (Optimized)</title>
+    <!-- Usamos A-Frame 1.4.2 para soporte WebXR nativo en móviles -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
         
-        /* El video de la cámara DEBE ser visible al fondo */
-        #video_input {
-            position: absolute; width: 100vw; height: 100vh;
-            object-fit: cover; z-index: 1; transform: scaleX(-1); /* Espejo para frontal */
+        #instructions {
+            position: fixed; top: 20px; left: 0; width: 100%; text-align: center;
+            color: #00ffcc; z-index: 100; pointer-events: none;
+            font-size: 14px; text-transform: uppercase; letter-spacing: 2px;
+            text-shadow: 0 0 10px #000;
         }
-        
-        /* El canvas de Three.js encima del video y transparente */
-        #output_canvas {
-            position: absolute; left: 0; top: 0; width: 100vw; height: 100vh;
-            z-index: 2; pointer-events: none;
-        }
-        
+
         .loader-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00ffcc; display: flex;
             flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
-        .progress-bar-bg { width: 70%; height: 8px; background: #1a1a1a; border-radius: 4px; margin-top: 20px; }
-        #progress-fill { width: 0%; height: 100%; background: #00ffcc; transition: width 0.3s; }
         
-        #error-console {
-            position: fixed; bottom: 10px; left: 10px; right: 10px;
-            background: rgba(255, 0, 0, 0.5); color: #fff; padding: 10px;
-            font-size: 12px; z-index: 2000; display: none; border-radius: 5px;
+        .progress-bar-bg { width: 70%; height: 4px; background: #1a1a1a; border-radius: 2px; margin-top: 15px; }
+        #progress-fill { width: 0%; height: 100%; background: #00ffcc; box-shadow: 0 0 10px #00ffcc; transition: width 0.3s; }
+
+        .btn-ar {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            padding: 15px 40px; background: #00ffcc; border: none; border-radius: 50px;
+            color: #000; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 5px 20px rgba(0,255,204,0.5); z-index: 1001;
+            display: none; cursor: pointer;
         }
     </style>
 </head>
 
 <body>
     <div id="loader" class="loader-container">
-        <div style="letter-spacing: 3px; font-weight: bold;">SISTEMA CYBER SENTINEL</div>
+        <div style="font-weight: bold;">CYBER SENTINEL AR</div>
         <div class="progress-bar-bg"><div id="progress-fill"></div></div>
-        <div id="status-text" style="margin-top:10px; font-size: 12px;">INICIALIZANDO...</div>
+        <div id="status-text" style="margin-top:10px; font-size: 10px;">CARGANDO MODELO...</div>
     </div>
 
-    <div id="error-console"></div>
+    <div id="instructions">Busca una superficie plana</div>
+    <button id="start-ar" class="btn-ar">INICIAR AR</button>
 
-    <!-- La cámara se muestra aquí -->
-    <video id="video_input" playsinline></video>
-    <!-- Los objetos 3D se muestran aquí -->
-    <canvas id="output_canvas"></canvas>
+    <a-scene 
+        webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #instructions;" 
+        renderer="logarithmicDepthBuffer: true; antialias: true;"
+        ar-hit-test="target: #reticle; type: footprint;"
+        embedded>
+        
+        <a-assets>
+            <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
+        </a-assets>
+
+        <!-- RETÍCULA (Guía visual para el suelo) -->
+        <a-entity id="reticle" visible="false">
+            <a-ring color="#00ffcc" radius-inner="0.15" radius-outer="0.2" rotation="-90 0 0"></a-ring>
+            <a-light type="point" intensity="0.5" color="#00ffcc"></a-light>
+        </a-entity>
+
+        <!-- CONTENEDOR DEL MODELO (Aparecerá donde el usuario toque) -->
+        <a-entity id="model-placed" position="0 0 -5" visible="false">
+            <a-entity 
+                gltf-model="#cyber-model" 
+                scale="0.8 0.8 0.8"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000">
+            </a-entity>
+            <a-text 
+                value="CYBER SENTINEL" 
+                position="0 2 0" 
+                align="center" 
+                color="#00ffcc"
+                width="4">
+            </a-text>
+        </a-entity>
+
+        <a-camera position="0 1.6 0"></a-camera>
+
+        <!-- Iluminación Pro -->
+        <a-light type="ambient" intensity="1.2"></a-light>
+        <a-light type="directional" position="1 2 1" intensity="0.8"></a-light>
+    </a-scene>
 
     <script>
-        const statusText = document.getElementById('status-text');
-        const progressFill = document.getElementById('progress-fill');
+        const scene = document.querySelector('a-scene');
         const loader = document.getElementById('loader');
-        const errorConsole = document.getElementById('error-console');
+        const startBtn = document.getElementById('start-ar');
+        const progressFill = document.getElementById('progress-fill');
+        const statusText = document.getElementById('status-text');
+        const reticle = document.querySelector('#reticle');
+        const modelPlaced = document.querySelector('#model-placed');
+        const instructions = document.getElementById('instructions');
 
-        function showError(msg) {
-            errorConsole.style.display = 'block';
-            errorConsole.innerHTML += `> ${msg}<br>`;
-        }
-
-        // --- Three.js ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('output_canvas'), alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        scene.add(new THREE.AmbientLight(0xffffff, 2));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(1, 1, 1);
-        scene.add(dirLight);
-
-        let model;
+        // Seguimiento de carga del modelo
         const manager = new THREE.LoadingManager();
         manager.onProgress = (u, l, t) => {
             const p = (l/t) * 100;
             progressFill.style.width = p + '%';
-            statusText.innerText = `DESCARGANDO MODELO: ${Math.round(p)}%`;
+            statusText.innerText = `MODELO: ${Math.round(p)}%`;
+        };
+        manager.onLoad = () => {
+            loader.style.display = 'none';
+            startBtn.style.display = 'block';
         };
 
-        const loader3d = new THREE.GLTFLoader(manager);
-        loader3d.load('Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb', (gltf) => {
-            model = gltf.scene;
-            model.scale.set(0.6, 0.6, 0.6);
-            model.visible = false;
-            scene.add(model);
-            startAI();
-        }, undefined, (e) => showError("Error Modelo: " + e.message));
+        // Reemplazar el cargador de A-Frame por el nuestro con manager
+        scene.addEventListener('loaded', () => {
+            const loader3d = new THREE.GLTFLoader(manager);
+            const asset = document.getElementById('cyber-model').src;
+        });
 
-        function startAI() {
-            statusText.innerText = "INICIANDO CÁMARA E IA...";
-            const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-            hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5 });
+        startBtn.addEventListener('click', () => {
+            scene.enterAR();
+            startBtn.style.display = 'none';
+            instructions.innerText = "Mueve el móvil para escanear el suelo";
+        });
 
-            hands.onResults((results) => {
-                loader.style.display = 'none'; // Quitar loader en el primer resultado
-                
-                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    const p = results.multiHandLandmarks[0][9]; // Centro de la palma
-                    // Mapeo de coordenadas (MediaPipe 0:1 -> Three.js -5:5)
-                    model.position.x = (p.x - 0.5) * -10; // Invertido por el espejo del video
-                    model.position.y = (p.y - 0.5) * -10;
-                    model.position.z = -p.z * 10;
-                    model.rotation.y += 0.05;
-                    model.visible = true;
-                } else {
-                    model.visible = false;
-                }
-                renderer.render(scene, camera);
-            });
+        // Evento de Hit-Test: Cuando el usuario toca la retícula
+        scene.addEventListener('ar-hit-test-select', (e) => {
+            const pose = e.detail.pose;
+            modelPlaced.setAttribute('position', pose.transform.position);
+            modelPlaced.setAttribute('visible', 'true');
+            reticle.setAttribute('visible', 'false');
+            instructions.innerText = "¡Modelo Fijado!";
+            setTimeout(() => { instructions.style.display = 'none'; }, 2000);
+        });
 
-            const video = document.getElementById('video_input');
-            const cam = new Camera(video, {
-                onFrame: async () => { await hands.send({ image: video }); },
-                width: 1280, height: 720
-            });
-            cam.start().catch(err => showError("Cámara: " + err.message));
-        }
-
-        // Ajuste de pantalla
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // Mostrar retícula solo en AR
+        scene.addEventListener('enter-vr', () => {
+            if (scene.is('ar-mode')) {
+                reticle.setAttribute('visible', 'true');
+            }
         });
     </script>
 </body>
