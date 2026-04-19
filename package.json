@@ -1,0 +1,14 @@
+﻿{
+    "version":  "1.0.0",
+    "name":  "ar-geolocalizacion-uide",
+    "scripts":  {
+                    "preview":  "vite preview",
+                    "build":  "vite build",
+                    "dev":  "vite"
+                },
+    "devDependencies":  {
+                            "vite":  "^5.0.0"
+                        },
+    "type":  "module",
+    "private":  true
+}
