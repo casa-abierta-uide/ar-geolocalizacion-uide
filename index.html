@@ -3,85 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyber Sentinel - Surface AR</title>
-    <!-- Usamos la última versión de A-Frame para mejor soporte WebXR -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <title>Cyber Sentinel - Hand AR</title>
+    <!-- Librerías de MediaPipe y Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #instructions {
-            position: fixed; top: 20px; left: 0; width: 100%; text-align: center;
-            color: #00ffcc; z-index: 100; pointer-events: none; text-shadow: 0 0 10px #000;
+        body { margin: 0; overflow: hidden; background: #000; }
+        #output_canvas { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; object-fit: cover; }
+        #video_input { display: none; }
+        #ui-layer {
+            position: fixed; top: 20px; width: 100%; text-align: center;
+            color: #00ffcc; font-family: sans-serif; z-index: 10;
+            text-shadow: 0 0 10px #000; font-weight: bold;
         }
-        .btn-ar {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            padding: 15px 30px; background: #00ffcc; border: none; border-radius: 50px;
-            font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(0,255,204,0.4);
-            z-index: 1000; display: none;
+        .loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: white; display: flex;
+            justify-content: center; align-items: center; z-index: 100;
         }
     </style>
 </head>
 
 <body>
-    <div id="instructions">Busca una superficie plana (suelo o mesa)</div>
+    <div id="ui-layer">Muestra la palma de tu mano</div>
+    <div id="loader" class="loader">Cargando IA de Mano...</div>
     
-    <!-- Botón para iniciar AR (Requerido por navegadores móviles) -->
-    <button id="start-ar" class="btn-ar">INICIAR EXPERIENCIA</button>
-
-    <a-scene 
-        webxr="optionalFeatures: hit-test; overlayElement: #instructions;" 
-        ar-hit-test="target: #model-container; type: footprint;"
-        renderer="logarithmicDepthBuffer: true;"
-        embedded>
-        
-        <a-assets>
-            <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
-        </a-assets>
-
-        <!-- Contenedor del modelo (se moverá a donde el usuario toque) -->
-        <a-entity id="model-container" position="0 0 -5" visible="false">
-            <a-entity 
-                gltf-model="#cyber-model" 
-                scale="1 1 1"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-            </a-entity>
-            <a-text 
-                value="SENTINEL" 
-                position="0 2.2 0" 
-                align="center" 
-                color="#00ffcc"
-                scale="1.5 1.5 1.5">
-            </a-text>
-        </a-entity>
-
-        <a-camera position="0 1.6 0"></a-camera>
-
-        <!-- Luz ambiental para que el modelo se vea bien -->
-        <a-light type="ambient" intensity="1.5"></a-light>
-        <a-light type="directional" position="1 1 1" intensity="1"></a-light>
-    </a-scene>
+    <video id="video_input" playsinline></video>
+    <canvas id="output_canvas"></canvas>
 
     <script>
-        const scene = document.querySelector('a-scene');
-        const container = document.querySelector('#model-container');
-        const instructions = document.querySelector('#instructions');
-        const startBtn = document.querySelector('#start-ar');
+        const videoElement = document.getElementById('video_input');
+        const canvasElement = document.getElementById('output_canvas');
+        const loader = document.getElementById('loader');
 
-        // Mostrar botón cuando la escena esté lista
-        scene.addEventListener('loaded', () => {
-            startBtn.style.display = 'block';
+        // --- Configuración de Three.js ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const light = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(light);
+
+        let model;
+        const loader3d = new THREE.GLTFLoader();
+        loader3d.load('Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb', (gltf) => {
+            model = gltf.scene;
+            model.scale.set(0.5, 0.5, 0.5);
+            model.visible = false;
+            scene.add(model);
+            loader.style.display = 'none';
         });
 
-        startBtn.addEventListener('click', () => {
-            scene.enterAR();
-            startBtn.style.display = 'none';
-            instructions.innerHTML = "Mueve el móvil para detectar el suelo...";
+        camera.position.z = 5;
+
+        // --- Configuración de MediaPipe Hands ---
+        const hands = new Hands({
+            locateFile: (file) => https://cdn.jsdelivr.net/npm/@mediapipe/hands/
         });
 
-        // Evento de Hit-Test: Cuando se detecta una superficie y el usuario toca
-        scene.addEventListener('ar-hit-test-select', () => {
-            container.setAttribute('visible', 'true');
-            instructions.innerHTML = "¡Modelo Fijado!";
-            setTimeout(() => { instructions.style.display = 'none'; }, 2000);
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && model) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Usamos el punto 9 (centro de la palma) para posicionar
+                const palmCenter = landmarks[9];
+                
+                // Convertir coordenadas de MediaPipe (0-1) a Three.js (-x a x)
+                const x = (palmCenter.x - 0.5) * 10;
+                const y = -(palmCenter.y - 0.5) * 10;
+                const z = -palmCenter.z * 10;
+
+                model.position.set(x, y, z);
+                model.rotation.y += 0.05;
+                model.visible = true;
+            } else if (model) {
+                model.visible = false;
+            }
+            renderer.render(scene, camera);
+        });
+
+        const cameraUtils = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720
+        });
+        cameraUtils.start();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
