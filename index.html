@@ -2,53 +2,39 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyber Sentinel AR - Fixed</title>
-    <!-- Solo una librería para evitar conflictos -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cyber Sentinel AR - Pro</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        
-        #instructions {
-            position: fixed; top: 20px; left: 0; width: 100%; text-align: center;
-            color: #00ffcc; z-index: 100; pointer-events: none;
-            font-size: 14px; font-weight: bold; text-transform: uppercase;
-            text-shadow: 0 0 10px #000; display: none;
-        }
-
-        .loader-container {
+        #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00ffcc; display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+            pointer-events: none; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 40px; color: #00ffcc; text-shadow: 0 0 10px #000;
         }
-        
-        .progress-bar-bg { width: 70%; height: 6px; background: #1a1a1a; border-radius: 3px; margin-top: 20px; }
-        #progress-fill { width: 0%; height: 100%; background: #00ffcc; box-shadow: 0 0 10px #00ffcc; transition: width 0.3s; }
-
-        #start-ar {
+        #status { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .btn-start {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            padding: 15px 40px; background: #00ffcc; border: none; border-radius: 50px;
-            color: #000; font-weight: bold; font-size: 1rem;
-            box-shadow: 0 5px 20px rgba(0,255,204,0.5); z-index: 1001;
-            display: none; cursor: pointer;
+            padding: 20px 50px; background: #00ffcc; color: #000; border: none;
+            border-radius: 15px; font-weight: 900; font-size: 1.2rem;
+            box-shadow: 0 10px 30px rgba(0,255,204,0.5); z-index: 1000;
+            cursor: pointer; pointer-events: auto;
         }
     </style>
 </head>
 
 <body>
-    <div id="loader" class="loader-container">
-        <div style="letter-spacing: 5px;">CARGANDO AR</div>
-        <div class="progress-bar-bg"><div id="progress-fill"></div></div>
-        <div id="status-text" style="margin-top:10px; font-size: 10px;">INICIALIZANDO...</div>
+    <div id="overlay">
+        <div id="status">Cargando Sistema...</div>
+        <div id="debug" style="font-size: 10px; margin-top: 10px; opacity: 0.7;"></div>
     </div>
 
-    <div id="instructions">Escanea el suelo y toca para fijar</div>
-    <button id="start-ar">INICIAR EXPERIENCIA</button>
+    <button id="btn-ar" class="btn-start" style="display:none;">INICIAR CÁMARA</button>
 
     <a-scene 
-        webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #instructions;" 
-        renderer="logarithmicDepthBuffer: true; antialias: true;"
+        webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay;"
+        renderer="antialias: true; colorManagement: true; logarithmicDepthBuffer: true;"
         ar-hit-test="target: #reticle; type: footprint;"
         embedded>
         
@@ -56,71 +42,77 @@
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
+        <!-- Retícula Neón (Círculo de escaneo) -->
         <a-entity id="reticle" visible="false">
-            <a-ring color="#00ffcc" radius-inner="0.1" radius-outer="0.15" rotation="-90 0 0"></a-ring>
+            <a-ring color="#00ffcc" radius-inner="0.1" radius-outer="0.15" rotation="-90 0 0">
+                <a-circle color="#00ffcc" radius="0.02" animation="property: scale; to: 1.5 1.5 1.5; dir: alternate; loop: true; dur: 500"></a-circle>
+            </a-ring>
         </a-entity>
 
+        <!-- El Modelo (Pequeño por defecto para evitar que tape la cámara) -->
         <a-entity id="model-placed" visible="false">
             <a-entity 
                 gltf-model="#cyber-model" 
-                scale="0.6 0.6 0.6"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000">
+                scale="0.2 0.2 0.2"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
             </a-entity>
         </a-entity>
 
         <a-light type="ambient" intensity="1.5"></a-light>
-        <a-light type="directional" position="1 2 1" intensity="1"></a-light>
+        <a-light type="directional" position="2 4 2" intensity="1"></a-light>
         <a-camera position="0 1.6 0"></a-camera>
     </a-scene>
 
     <script>
         const scene = document.querySelector('a-scene');
-        const progressFill = document.getElementById('progress-fill');
-        const statusText = document.getElementById('status-text');
-        const startBtn = document.getElementById('start-ar');
-        const loader = document.getElementById('loader');
-        const instructions = document.getElementById('instructions');
-        const modelPlaced = document.querySelector('#model-placed');
-        const reticle = document.querySelector('#reticle');
+        const btn = document.getElementById('btn-ar');
+        const status = document.getElementById('status');
+        const debug = document.getElementById('debug');
+        const reticle = document.getElementById('reticle');
+        const modelPlaced = document.getElementById('model-placed');
 
-        // Función para rastrear la carga usando la API de Three.js interna de A-Frame
+        // 1. Verificar soporte
+        if (!window.isSecureContext) {
+            status.innerText = "ERROR: REQUIERE HTTPS";
+            status.style.color = "red";
+        }
+
+        // 2. Manejo de carga
         scene.addEventListener('loaded', () => {
-            const loadingManager = AFRAME.THREE.DefaultLoadingManager;
-            
-            loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-                const p = (itemsLoaded / itemsTotal) * 100;
-                progressFill.style.width = p + '%';
-                statusText.innerText = `DESCARGANDO COMPONENTES... ${Math.round(p)}%`;
-                
-                if (p >= 100) {
-                    setTimeout(() => {
-                        loader.style.display = 'none';
-                        startBtn.style.display = 'block';
-                    }, 500);
-                }
-            };
+            status.innerText = "SISTEMA LISTO";
+            btn.style.display = "block";
         });
 
-        startBtn.addEventListener('click', () => {
+        btn.addEventListener('click', () => {
             scene.enterAR();
-            startBtn.style.display = 'none';
-            instructions.style.display = 'block';
+            btn.style.display = "none";
+            status.innerText = "MUEVE EL MÓVIL HACIA EL SUELO";
         });
 
+        // 3. Lógica de AR
+        scene.addEventListener('enter-vr', () => {
+            if (scene.is('ar-mode')) {
+                debug.innerText = "Modo AR Activo. Buscando superficie...";
+            }
+        });
+
+        // Cuando el hit-test encuentra algo
         scene.addEventListener('ar-hit-test-select', (e) => {
             const pose = e.detail.pose;
             modelPlaced.setAttribute('position', pose.transform.position);
             modelPlaced.setAttribute('visible', 'true');
-            reticle.setAttribute('visible', 'false');
-            instructions.innerText = "¡SISTEMA FIJADO!";
-            setTimeout(() => { instructions.style.display = 'none'; }, 2000);
+            status.innerText = "MODELO FIJADO";
+            debug.innerText = "Fijado en: " + JSON.stringify(pose.transform.position);
+            setTimeout(() => { status.style.opacity = '0'; }, 3000);
         });
 
-        scene.addEventListener('enter-vr', () => {
-            if (scene.is('ar-mode')) {
-                reticle.setAttribute('visible', 'true');
+        // Actualizar estado de la retícula
+        setInterval(() => {
+            if (reticle.getAttribute('visible')) {
+                status.innerText = "¡SUPERFICIE DETECTADA! TOCA LA PANTALLA";
+                status.style.color = "#00ffcc";
             }
-        });
+        }, 500);
     </script>
 </body>
 </html>
