@@ -2,125 +2,117 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyber Sentinel AR - Multi-Cam</title>
-    <!-- Cargamos A-Frame y AR.js -->
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Sentinel AR - Model Viewer</title>
+    
+    <!-- Cargamos el componente model-viewer de Google (Estándar de la industria) -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        body { margin: 0; padding: 0; width: 100vw; height: 100vh; background: #000; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
-        #ui-overlay {
-            position: fixed; bottom: 30px; left: 0; width: 100%;
-            display: flex; flex-direction: column; align-items: center;
-            z-index: 1000; gap: 15px;
+        model-viewer {
+            width: 100%; height: 100%; background-color: #050505;
+            --poster-color: transparent;
         }
 
-        .btn {
-            padding: 15px 30px; border-radius: 50px; border: none;
-            font-weight: bold; font-size: 14px; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-transform: uppercase;
+        /* UI de la Casa Abierta */
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; z-index: 10;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+            padding: 30px 0;
+        }
+        .header-title { color: #00ffcc; font-size: 1.2rem; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin: 0; }
+        .header-subtitle { color: #fff; font-size: 0.7rem; letter-spacing: 2px; opacity: 0.8; margin-top: 5px; }
+
+        /* Botón AR Personalizado */
+        #ar-button {
+            background-color: #00ffcc; border-radius: 50px; border: none;
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            padding: 18px 40px; font-weight: 900; color: #000; font-size: 1rem;
+            box-shadow: 0 10px 30px rgba(0,255,204,0.4); cursor: pointer;
+            display: flex; align-items: center; gap: 10px; pointer-events: auto;
+            text-transform: uppercase;
         }
 
-        #btn-switch { background: #00ffcc; color: #000; }
-        #btn-reset { background: rgba(255,255,255,0.2); color: #fff; border: 1px solid #fff; }
-
-        #loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00ffcc; display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 2000;
+        /* Indicador de Carga */
+        .progress-bar {
+            position: absolute; width: 100%; height: 2px; top: 0; left: 0;
+            background: rgba(255,255,255,0.1); display: none;
         }
+        .update-bar { width: 0%; height: 100%; background: #00ffcc; box-shadow: 0 0 10px #00ffcc; transition: width 0.3s; }
 
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #1a1a1a;
-            border-top: 4px solid #00ffcc; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+        /* Instrucciones al entrar */
+        #instructions {
+            position: absolute; bottom: 120px; width: 100%; text-align: center;
+            color: #fff; font-size: 0.8rem; opacity: 0.7; letter-spacing: 1px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 
 <body>
-    <div id="loader">
-        <div class="spinner"></div>
-        <div id="status">INICIALIZANDO CYBER SENTINEL...</div>
+    <!-- Capa de Información -->
+    <div class="overlay">
+        <h1 class="header-title">Cyber Sentinel</h1>
+        <div class="header-subtitle">CASA ABIERTA UIDE 2026</div>
     </div>
 
-    <div id="ui-overlay">
-        <button id="btn-switch" class="btn">Cambiar Cámara 🔄</button>
-        <button id="btn-reset" class="btn">Reiniciar Modelo</button>
-    </div>
-
-    <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; facingMode: environment;"
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true;">
+    <!-- El Visor 3D y AR de Google -->
+    <!-- ar: activa el modo AR -->
+    <!-- ar-modes: prioriza los métodos nativos (más estables) -->
+    <!-- camera-controls: permite rotar/zoom con los dedos -->
+    <!-- shadow-intensity: proyecta sombra real en tu suelo -->
+    <model-viewer 
+        id="cyber-sentinel"
+        src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"
+        ar
+        ar-modes="scene-viewer quick-look webxr"
+        camera-controls
+        touch-action="pan-y"
+        shadow-intensity="2"
+        shadow-softness="1"
+        exposure="1"
+        auto-rotate
+        rotation="0 0 0"
+        interaction-prompt="auto">
         
-        <a-assets>
-            <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
-        </a-assets>
+        <div class="progress-bar" slot="progress-bar">
+            <div class="update-bar"></div>
+        </div>
 
-        <!-- El modelo se coloca en una posición fija frente a la cámara (Markerless) -->
-        <a-entity id="ar-container" position="0 0 -5">
-            <a-entity 
-                id="sentinel"
-                gltf-model="#cyber-model" 
-                scale="1 1 1"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-            </a-entity>
-            <a-text 
-                value="CYBER SENTINEL" 
-                position="0 2.5 0" 
-                align="center" 
-                color="#00ffcc"
-                width="6">
-            </a-text>
-        </a-entity>
+        <button slot="ar-button" id="ar-button">
+            🚀 ACTIVAR REALIDAD AUMENTADA
+        </button>
 
-        <a-entity camera></a-entity>
-    </a-scene>
+        <div id="instructions">
+            Usa tus dedos para rotar y hacer zoom al modelo
+        </div>
+
+        <div id="ar-prompt" style="display: none;">
+            <img src="https://modelviewer.dev/assets/hand.png">
+        </div>
+    </model-viewer>
 
     <script>
-        const btnSwitch = document.getElementById('btn-switch');
-        const btnReset = document.getElementById('btn-reset');
-        const loader = document.getElementById('loader');
-        const status = document.getElementById('status');
-        const sentinel = document.getElementById('sentinel');
-        const container = document.getElementById('ar-container');
+        // Manejo de la barra de progreso de carga
+        const modelViewer = document.querySelector('#cyber-sentinel');
+        const progressBar = document.querySelector('.progress-bar');
+        const updateBar = document.querySelector('.update-bar');
 
-        let currentFacingMode = 'environment';
-
-        // Ocultar loader cuando el modelo esté listo
-        sentinel.addEventListener('model-loaded', () => {
-            loader.style.display = 'none';
-        });
-
-        // Alternar entre cámara delantera y trasera
-        btnSwitch.addEventListener('click', () => {
-            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-            
-            // Recargar la página con el nuevo facingMode (AR.js requiere reinicio de stream)
-            const url = new URL(window.location.href);
-            url.searchParams.set('facingMode', currentFacingMode);
-            window.location.href = url.href;
-        });
-
-        // Al cargar, leer el facingMode de la URL
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            const mode = params.get('facingMode');
-            if (mode) {
-                currentFacingMode = mode;
-                document.querySelector('a-scene').setAttribute('arjs', `sourceType: webcam; debugUIEnabled: false; facingMode: ${mode};`);
+        modelViewer.addEventListener('progress', (event) => {
+            const { totalProgress } = event.detail;
+            progressBar.style.display = 'block';
+            updateBar.style.width = `${totalProgress * 100}%`;
+            if (totalProgress === 1) {
+                setTimeout(() => progressBar.style.display = 'none', 500);
             }
         });
 
-        // Reiniciar posición del modelo
-        btnReset.addEventListener('click', () => {
-            container.setAttribute('position', '0 0 -5');
-            sentinel.setAttribute('rotation', '0 0 0');
+        // Error al cargar
+        modelViewer.addEventListener('error', (event) => {
+            console.error('Error al cargar el modelo:', event.detail);
+            alert("No se pudo cargar el modelo 3D. Verifica tu conexión.");
         });
     </script>
 </body>
