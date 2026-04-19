@@ -3,68 +3,47 @@
 <head>
     <meta charset='utf-8'>
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <title>AR.js Cyber Sentinel - Casa Abierta UIDE</title>
+    <title>AR.js Marker Based - Casa Abierta UIDE</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-    <style>
-        .arjs-loader {
-            height: 100%; width: 100%; position: absolute; top: 0; left: 0;
-            background-color: rgba(0, 0, 0, 0.8); z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
-        }
-        #debug-panel {
-            position: absolute; bottom: 10px; left: 10px; width: auto; height: auto;
-            background: rgba(0,0,0,0.6); color: #0f0; padding: 10px; font-family: monospace;
-            z-index: 1000; font-size: 12px; pointer-events: none; border-radius: 5px;
-        }
-    </style>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 </head>
 
 <body style='margin: 0; overflow: hidden;'>
-    <div class="arjs-loader">
-        <div>Iniciando Cyber Sentinel AR...<br>Otorga permisos de Cámara y GPS</div>
-    </div>
-
-    <!-- Panel de Depuración para ver el GPS en el móvil -->
-    <div id="debug-panel">
-        GPS Status: Buscando señal...<br>
-        Lat: -- | Lon: --
-    </div>
-
+    <!-- Escena configurada para Marcadores -->
     <a-scene
         vr-mode-ui="enabled: false"
         embedded
-        arjs='sourceType: webcam; debugUIEnabled: false;'>
+        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'>
         
-        <!-- ASSETS: Definimos el modelo para cargarlo eficientemente -->
         <a-assets>
             <a-asset-item id="cyber-model" src="Meshy_AI_Cyber_Sentinel_Superi_0419122834_texture.glb"></a-asset-item>
         </a-assets>
 
-        <!-- ENTIDAD AR: El Cyber Sentinel en la ubicación GPS -->
-        <!-- REEMPLAZA latitude y longitude con tus coordenadas finales -->
-        <a-entity 
-            gltf-model="#cyber-model"
-            gps-entity-place="latitude: -0.22985; longitude: -78.52495;"
-            scale="2 2 2"
-            position="0 0 0"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-        </a-entity>
+        <!-- MARCADOR 'HIRO': El estándar de AR.js -->
+        <a-marker preset="hiro">
+            <!-- El modelo aparecerá sobre el marcador -->
+            <a-entity 
+                gltf-model="#cyber-model"
+                scale="1 1 1"
+                position="0 0 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000">
+            </a-entity>
+            
+            <a-text 
+                value="CYBER SENTINEL UIDE" 
+                position="0 1.5 0" 
+                align="center" 
+                scale="1 1 1" 
+                rotation="-90 0 0"
+                color="#00ff00">
+            </a-text>
+        </a-marker>
 
-        <a-camera gps-camera rotation-reader></a-camera>
+        <a-entity camera></a-entity>
     </a-scene>
 
-    <script>
-        window.addEventListener('load', () => {
-            const loader = document.querySelector('.arjs-loader');
-            loader.style.display = 'none';
-        });
-
-        // Actualizar panel de depuración con la posición real
-        window.addEventListener('gps-camera-update-position', (e) => {
-            const panel = document.getElementById('debug-panel');
-            panel.innerHTML = GPS Status: SEÑAL OK<br>Lat:  | Lon: ;
-        });
-    </script>
+    <div style="position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; z-index: 1001;">
+        Apunta la cámara al marcador "Hiro"
+    </div>
 </body>
 </html>
